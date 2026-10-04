@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="Keep household subscriptions and everyone's monthly share in one place.">
   <title>SplitSeat | Household subscriptions</title>
-  <link rel="stylesheet" href="./styles.css?v=cross-tab-v1">
+  <link rel="stylesheet" href="./styles.css?v=editing-v1">
 </head>
 <body>
   <a class="skip-link" href="#subscriptions">Skip to subscriptions</a>
@@ -33,7 +33,7 @@
         <div id="empty-state" class="empty-state" hidden><h3>A little room in the budget.</h3><p>Add a subscription to see what your household shares each month.</p><a href="#subscription-name">Add your first subscription</a></div>
       </section>
       <aside class="add-panel" aria-labelledby="add-title">
-        <h2 id="add-title">Add a subscription</h2><p>Enter the full bill, then who's sharing it.</p>
+        <h2 id="add-title">Add a subscription</h2><p id="form-description">Enter the full bill, then who's sharing it.</p>
         <form id="subscription-form">
           <label for="subscription-name">Subscription name</label>
           <input id="subscription-name" name="name" autocomplete="off" placeholder="e.g. Movie night" required maxlength="120">
@@ -43,7 +43,8 @@
           <input id="subscription-members" name="members" autocomplete="off" placeholder="Alex, Sam" required aria-describedby="members-help">
           <p id="members-help" class="field-help">Separate names with commas. Use the same name across subscriptions to combine shares.</p>
           <p id="form-error" class="form-error" role="alert" hidden></p>
-          <button class="primary-button" type="submit">Add subscription</button>
+          <button id="save-subscription" class="primary-button" type="submit">Add subscription</button>
+          <button id="cancel-edit" class="cancel-button" type="button" hidden>Cancel</button>
         </form>
         <p class="privacy-note">Saved in this browser. No accounts or syncing.</p>
       </aside>
@@ -51,6 +52,6 @@
   </main>
   <footer><span>SplitSeat</span><p>A fair share of the everyday.</p></footer>
   <noscript><p class="notice">Turn on JavaScript to manage your subscriptions. Your saved data remains unchanged.</p></noscript>
-  <script type="module" src="./app.js?v=cross-tab-v1"></script>
+  <script type="module" src="./app.js?v=editing-v1"></script>
 </body>
 </html>

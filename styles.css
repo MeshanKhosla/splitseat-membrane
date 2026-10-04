@@ -72,3 +72,10 @@ footer span { font-weight:650; }
 @media (max-width:800px) { .workspace { grid-template-columns:1fr; gap:28px; } .add-panel { max-width:none; } .overview { gap:20px; } h1 { font-size:34px; } .household-total strong { font-size:36px; } }
 @media (max-width:520px) { .site-header,main,footer { width:calc(100% - 32px); } .site-header { padding-block:20px; } .device-note { max-width:110px; text-align:right; line-height:1.5; } .overview { align-items:flex-start; flex-direction:column; padding-top:28px; gap:24px; } h1 { font-size:33px; } .household-total { align-items:flex-start; } .household-total strong { font-size:39px; } .shares-section { padding:21px 18px; } .section-intro { gap:8px; } .member-shares { gap:18px; } .member-shares li { min-width:120px; } .subscription-row { flex-wrap:wrap; padding:15px; gap:10px; } .subscription-symbol { width:34px; height:34px; font-size:16px; } .subscription-info { flex-basis:calc(100% - 44px); } .subscription-price { text-align:left; margin-left:44px; flex:1; } .delete-button { padding:12px 8px; } .add-panel { padding:22px 18px; } footer { gap:16px; } }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; } }
+
+.row-actions { display:flex; align-items:center; gap:2px; flex-shrink:0; }
+.edit-button { border:0; background:transparent; color:var(--blue); padding:10px 6px; border-radius:5px; font-size:12px; }
+.edit-button:hover { background:#edf1fb; }
+.cancel-button { width:100%; min-height:44px; margin-top:9px; border:1px solid #bfc8da; border-radius:7px; background:white; color:var(--ink); font-weight:600; }
+.cancel-button:hover { background:var(--paper); }
+@media (max-width:520px) { .row-actions { margin-left:auto; } .edit-button { padding:12px 8px; } }

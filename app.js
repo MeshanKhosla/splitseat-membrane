@@ -9,6 +9,12 @@ let persistenceBlocked = false;
 let pendingOperations = [];
 let operationQueue = Promise.resolve();
 let formBusy = false;
+let editing = null;
+let pendingConflict = false;
+const sameEntry = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+class EditConflict extends Error {
+  constructor() { super("This subscription changed or was deleted in another tab. Your draft is kept. Cancel, then reopen the current entry to edit it."); }
+}
 const STORAGE_KEY = "splitseat:v1";
 
 function withStorageLock(action) {
@@ -27,7 +33,11 @@ function applyOperations(base, operations) {
   let result = [...base];
   for (const operation of operations) {
     if (operation.type === "delete") result = result.filter(entry => entry.id !== operation.id);
-    else {
+    else if (operation.type === "edit") {
+      const index = result.findIndex(entry => entry.id === operation.entry.id);
+      if (index < 0 || (!sameEntry(result[index], operation.before) && !sameEntry(result[index], operation.entry))) throw new EditConflict();
+      result[index] = operation.entry;
+    } else {
       const existing = result.find(entry => entry.id === operation.entry.id);
       if (existing && JSON.stringify(existing) !== JSON.stringify(operation.entry)) {
         throw new Error("A subscription id conflicts with saved data. Your session changes have not been saved.");
@@ -60,18 +70,46 @@ function savePending() {
   }
 }
 
+function showFormError(message) {
+  $("form-error").textContent = message;
+  $("form-error").hidden = false;
+}
+
+function projectPending(latest) {
+  let result = latest;
+  pendingConflict = false;
+  for (const operation of pendingOperations) {
+    try { result = applyOperations(result, [operation]); }
+    catch (error) {
+      if (!(error instanceof EditConflict)) throw error;
+      pendingConflict = true;
+      showFormError(error.message);
+    }
+  }
+  return result;
+}
+
+function refreshLatest() {
+  if (persistenceBlocked) return false;
+  let latest;
+  try { latest = loadSubscriptions(storage) ?? []; }
+  catch { blockPersistence(); return false; }
+  subscriptions = projectPending(latest);
+  return true;
+}
+
+function checkDraft() {
+  if (editing) {
+    const current = subscriptions.find(entry => entry.id === editing.base.id);
+    if (!current || !sameEntry(current, editing.base) || pendingConflict) showFormError(new EditConflict().message);
+  }
+}
+
 function mutate(operation) {
   return enqueue(() => withStorageLock(() => {
-    if (!persistenceBlocked) {
-      try {
-        const latest = loadSubscriptions(storage) ?? [];
-        subscriptions = applyOperations(latest, pendingOperations);
-      } catch {
-        blockPersistence();
-      }
-    }
-    // Replay unsaved intents on the latest data, never save a stale snapshot.
-    // Failed reads block writes and preserve the session's current entries.
+    refreshLatest();
+    render();
+    if (pendingConflict) throw new EditConflict();
     subscriptions = applyOperations(subscriptions, [operation]);
     pendingOperations.push(operation);
     const saved = !persistenceBlocked && savePending();
@@ -80,19 +118,70 @@ function mutate(operation) {
   }));
 }
 
+function setFormMode() {
+  $("add-title").textContent = editing ? "Edit subscription" : "Add a subscription";
+  $("form-description").textContent = editing ? "Update the full bill and who's sharing it." : "Enter the full bill, then who's sharing it.";
+  $("save-subscription").textContent = editing ? "Save changes" : "Add subscription";
+  $("cancel-edit").hidden = !editing;
+}
+
+async function beginEdit(id) {
+  if (formBusy) return;
+  if (editing) {
+    if (editing.base.id !== id) showFormError("Save or cancel the current edit before editing another subscription.");
+    $("subscription-name").focus();
+    return;
+  }
+  await enqueue(() => {
+    refreshLatest();
+    render();
+    if (pendingConflict) { checkDraft(); return; }
+    const entry = subscriptions.find(item => item.id === id);
+    if (!entry) { $("activity").textContent = "This subscription was deleted in another tab."; return; }
+    editing = { base: validateSubscription(entry) };
+    $("subscription-name").value = entry.name;
+    $("subscription-cost").value = `${Math.floor(entry.costCents / 100)}.${String(entry.costCents % 100).padStart(2, "0")}`;
+    $("subscription-interval").value = entry.interval;
+    $("subscription-members").value = entry.members.join(", ");
+    $("form-error").hidden = true;
+    setFormMode();
+    $("subscription-name").focus();
+  });
+}
+
+$("cancel-edit").addEventListener("click", async () => {
+  if (formBusy || !editing) return;
+  const id = editing.base.id;
+  await enqueue(() => {
+    const unsaved = pendingOperations.filter(operation => operation.type === "edit" && operation.entry.id === id);
+    pendingOperations = pendingOperations.filter(operation => operation.type !== "edit" || operation.entry.id !== id);
+    editing = null;
+    refreshLatest();
+    if (unsaved.length && persistenceBlocked) {
+      subscriptions = subscriptions.map(entry => entry.id === id ? unsaved[0].before : entry);
+    }
+    render();
+    $("subscription-form").reset();
+    $("form-error").hidden = true;
+    setFormMode();
+    $("activity").textContent = "Edit cancelled. Saved subscriptions were not changed.";
+    $("subscription-name").focus();
+  });
+});
+
 window.addEventListener("storage", event => {
   if (event.storageArea !== storage || (event.key !== STORAGE_KEY && event.key !== null)) return;
   enqueue(() => {
     if (persistenceBlocked) return;
     try {
-      const latest = loadSubscriptions(storage) ?? [];
-      subscriptions = applyOperations(latest, pendingOperations);
+      if (!refreshLatest()) return;
       render();
+      checkDraft();
       $("activity").textContent = pendingOperations.length
         ? "Saved changes from another tab loaded. Your unsaved session edits are still kept here."
         : "Budget updated from another tab.";
-    } catch {
-      blockPersistence();
+    } catch (error) {
+      showFormError(error.message);
     }
   });
 });
@@ -133,18 +222,27 @@ function render() {
     const price = node("div", "subscription-price");
     price.append(node("strong", "", money(entry.costCents / (entry.interval === "yearly" ? 12 : 1))),
       node("span", "", entry.interval === "yearly" ? `${money(entry.costCents)} / year` : "per month"));
+    const edit = node("button", "edit-button", "Edit");
+    edit.type = "button";
+    edit.setAttribute("aria-label", `Edit ${entry.name}`);
+    edit.addEventListener("click", () => beginEdit(entry.id));
     const remove = node("button", "delete-button", "Delete");
     remove.type = "button";
     remove.setAttribute("aria-label", `Delete ${entry.name}`);
     remove.addEventListener("click", async () => {
       const index = subscriptions.findIndex(item => item.id === entry.id);
-      const saved = await mutate({ type: "delete", id: entry.id });
+      let saved;
+      try { saved = await mutate({ type: "delete", id: entry.id }); }
+      catch (error) { showFormError(error.message); return; }
+      checkDraft();
       $("activity").textContent = `${entry.name} deleted.${saved ? " Saved in this browser." : " Changed for this session only."}`;
-      const buttons = $("subscription-list").querySelectorAll("button");
+      const buttons = $("subscription-list").querySelectorAll(".delete-button");
       if (buttons.length) buttons[Math.min(index, buttons.length - 1)].focus();
       else $("subscription-name").focus();
     });
-    row.append(symbol, info, price, remove);
+    const actions = node("div", "row-actions");
+    actions.append(edit, remove);
+    row.append(symbol, info, price, actions);
     $("subscription-list").append(row);
   }
   $("empty-state").hidden = subscriptions.length !== 0;
@@ -173,15 +271,24 @@ $("subscription-form").addEventListener("submit", async event => {
   $("form-error").hidden = true;
   try {
     const entry = validateSubscription({
-      id: newId(),
+      id: editing ? editing.base.id : newId(),
       name: $("subscription-name").value,
       costCents: parseCost($("subscription-cost").value),
       interval: $("subscription-interval").value,
       members: $("subscription-members").value.split(","),
     });
-    const saved = await mutate({ type: "add", entry });
-    $("subscription-form").reset();
-    $("activity").textContent = `${entry.name} added.${saved ? " Saved in this browser." : " Changed for this session only."}`;
+    const wasEditing = Boolean(editing);
+    const operation = editing ? { type: "edit", before: editing.base, entry } : { type: "add", entry };
+    const saved = await mutate(operation);
+    if (wasEditing && !saved) {
+      editing = { base: validateSubscription(entry) };
+      if (!persistenceBlocked) notice("Your edit is kept for this session only. Save changes to retry, or Cancel to discard this unsaved edit. Changes will be lost on reload.");
+    } else {
+      editing = null;
+      $("subscription-form").reset();
+    }
+    setFormMode();
+    $("activity").textContent = `${entry.name} ${wasEditing ? "updated" : "added"}.${saved ? " Saved in this browser." : " Changed for this session only."}`;
     $("subscription-name").focus();
   } catch (error) {
     $("form-error").textContent = error instanceof Error ? error.message : "Check the subscription details and try again.";
