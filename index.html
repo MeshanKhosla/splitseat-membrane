@@ -3,11 +3,54 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SplitSeat</title>
+  <meta name="theme-color" content="#f6f8fc">
+  <meta name="description" content="Keep household subscriptions and everyone's monthly share in one place.">
+  <title>SplitSeat | Household subscriptions</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main><h1>SplitSeat</h1><p>Shared-subscription budget tracker. Implementation pending owner review.</p></main>
+  <a class="skip-link" href="#subscriptions">Skip to subscriptions</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="SplitSeat home"><span class="brand-mark" aria-hidden="true">S</span>SplitSeat</a>
+    <span class="device-note">Your household, on this device</span>
+  </header>
+  <main>
+    <section class="overview" aria-labelledby="page-title">
+      <div><h1 id="page-title">Shared subscriptions.<br>Everyone's share.</h1><p>One place for the little bills you share at home.</p></div>
+      <div class="household-total"><span>Household monthly total</span><strong id="monthly-total">$0.00</strong><span id="subscription-count">0 subscriptions</span></div>
+    </section>
+    <p id="storage-notice" class="notice" role="alert" hidden></p>
+    <p id="activity" class="activity" role="status" aria-live="polite"></p>
+    <section class="shares-section" aria-labelledby="shares-title">
+      <div class="section-intro"><h2 id="shares-title">At your table</h2><p>Each subscription is split equally among its members.</p></div>
+      <ul id="member-shares" class="member-shares"></ul>
+      <p class="rounding-note">Yearly bills are spread over 12 months. Rounded shares may add up a cent differently.</p>
+    </section>
+    <div class="workspace">
+      <section id="subscriptions" class="subscriptions" aria-labelledby="subscriptions-title" tabindex="-1">
+        <div class="section-heading"><h2 id="subscriptions-title">Your subscriptions</h2><span id="list-count" class="count">0</span></div>
+        <ul id="subscription-list" class="subscription-list"></ul>
+        <div id="empty-state" class="empty-state" hidden><h3>A little room in the budget.</h3><p>Add a subscription to see what your household shares each month.</p><a href="#subscription-name">Add your first subscription</a></div>
+      </section>
+      <aside class="add-panel" aria-labelledby="add-title">
+        <h2 id="add-title">Add a subscription</h2><p>Enter the full bill, then who's sharing it.</p>
+        <form id="subscription-form">
+          <label for="subscription-name">Subscription name</label>
+          <input id="subscription-name" name="name" autocomplete="off" placeholder="e.g. Movie night" required maxlength="120">
+          <div class="form-row"><div><label for="subscription-cost">Full bill in USD</label><div class="money-input"><span aria-hidden="true">$</span><input id="subscription-cost" name="cost" type="text" inputmode="decimal" placeholder="15.00" required aria-describedby="cost-help"></div></div><div><label for="subscription-interval">Billed</label><select id="subscription-interval" name="interval"><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></div></div>
+          <p id="cost-help" class="field-help">Use dollars and up to two decimal places.</p>
+          <label for="subscription-members">Who's sharing?</label>
+          <input id="subscription-members" name="members" autocomplete="off" placeholder="Alex, Sam" required aria-describedby="members-help">
+          <p id="members-help" class="field-help">Separate names with commas. Use the same name across subscriptions to combine shares.</p>
+          <p id="form-error" class="form-error" role="alert" hidden></p>
+          <button class="primary-button" type="submit">Add subscription</button>
+        </form>
+        <p class="privacy-note">Saved in this browser. No accounts or syncing.</p>
+      </aside>
+    </div>
+  </main>
+  <footer><span>SplitSeat</span><p>A fair share of the everyday.</p></footer>
+  <noscript><p class="notice">Turn on JavaScript to manage your subscriptions. Your saved data remains unchanged.</p></noscript>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

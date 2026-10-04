@@ -1,1 +1,74 @@
-/* SplitSeat presentation. Implementation pending approved task delivery. */
+:root { color-scheme: light; --ink:#182544; --blue:#315bcc; --lilac:#eeeaff; --paper:#f6f8fc; --slate:#59657a; --line:#dce2ed; --white:#fff; font-family: "Segoe UI", Arial, sans-serif; color:var(--ink); background:var(--paper); }
+* { box-sizing:border-box; }
+body { margin:0; }
+a { color:var(--blue); text-underline-offset:3px; }
+button, input, select { font:inherit; }
+button, a, input, select { -webkit-tap-highlight-color:transparent; }
+:focus-visible { outline:3px solid #315bcc; outline-offset:4px; }
+button { cursor:pointer; }
+h1,h2,h3,p { margin:0; }
+h1,h2,h3,.brand { font-family:"Trebuchet MS", "Segoe UI", sans-serif; }
+.site-header,main,footer { width:min(1120px, calc(100% - 64px)); margin-inline:auto; }
+.site-header { display:flex; align-items:center; justify-content:space-between; gap:24px; padding-block:28px; border-bottom:1px solid var(--line); }
+.brand { display:flex; align-items:center; gap:10px; color:var(--ink); font-size:24px; font-weight:700; text-decoration:none; }
+.brand-mark { display:grid; place-items:center; width:34px; height:34px; background:var(--blue); color:white; border-radius:10px 10px 10px 3px; font-size:23px; }
+.device-note { color:var(--slate); font-size:13px; }
+.overview { display:flex; align-items:center; justify-content:space-between; gap:36px; padding:44px 0 30px; }
+h1 { font-size:clamp(30px,4vw,43px); line-height:1.15; letter-spacing:-1.3px; }
+.overview p { color:var(--slate); margin-top:14px; line-height:1.6; }
+.household-total { display:flex; flex-direction:column; align-items:flex-end; gap:7px; flex-shrink:0; }
+.household-total span { font-size:14px; color:var(--slate); }
+.household-total strong { font-size:43px; font-weight:650; letter-spacing:-1.5px; font-variant-numeric:tabular-nums; }
+.notice { background:#fff0e8; border:1px solid #e9baa1; border-radius:8px; color:#743717; padding:14px 18px; line-height:1.5; margin-bottom:18px; }
+.activity { min-height:20px; font-size:14px; color:var(--slate); margin-bottom:12px; }
+.shares-section { padding:23px 26px; background:var(--lilac); border-radius:14px; margin-bottom:34px; }
+.section-intro { display:flex; align-items:baseline; gap:20px; flex-wrap:wrap; }
+h2 { font-size:21px; line-height:1.3; letter-spacing:-.4px; }
+.section-intro p,.rounding-note { color:#555575; font-size:13px; line-height:1.5; }
+.member-shares { display:flex; flex-wrap:wrap; gap:16px 30px; padding:20px 0; margin:0; list-style:none; }
+.member-shares li { display:flex; align-items:center; gap:11px; min-width:140px; }
+.avatar { display:grid; place-items:center; background:#fff; width:37px; height:37px; border-radius:50%; font-weight:650; color:#5c4790; flex-shrink:0; }
+.member-name { display:block; font-size:14px; overflow-wrap:anywhere; }
+.member-amount { display:block; font-size:17px; font-weight:650; margin-top:3px; font-variant-numeric:tabular-nums; }
+.member-amount small { font-size:12px; font-weight:400; color:#555575; }
+.workspace { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr); gap:36px; align-items:start; }
+.section-heading { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+.count { background:#e5eaf5; color:var(--slate); padding:3px 9px; border-radius:14px; font-size:12px; }
+.subscription-list { list-style:none; padding:0; margin:0; }
+.subscription-row { background:var(--white); border:1px solid var(--line); padding:18px; display:flex; gap:14px; align-items:center; margin-bottom:12px; border-radius:9px; }
+.subscription-symbol { width:42px; height:42px; display:grid; place-items:center; border-radius:10px; background:#edf1fb; color:var(--blue); font-size:19px; font-weight:650; flex-shrink:0; }
+.subscription-info { flex:1; min-width:0; }
+.subscription-info h3 { font-family:inherit; font-size:16px; font-weight:650; overflow-wrap:anywhere; }
+.subscription-info p { font-size:12px; color:var(--slate); line-height:1.5; margin-top:5px; overflow-wrap:anywhere; }
+.subscription-price { text-align:right; flex-shrink:0; font-variant-numeric:tabular-nums; }
+.subscription-price strong { display:block; font-size:16px; }
+.subscription-price span { display:block; color:var(--slate); font-size:12px; margin-top:5px; }
+.delete-button { border:0; color:var(--slate); background:transparent; padding:10px 6px; font-size:12px; border-radius:5px; }
+.delete-button:hover { color:#9f2f3a; background:#fff0f1; }
+.add-panel { background:var(--white); padding:25px; border:1px solid var(--line); border-top:3px solid var(--blue); border-radius:3px 3px 12px 12px; }
+.add-panel>p { color:var(--slate); font-size:14px; line-height:1.5; margin-top:8px; }
+form { margin-top:24px; }
+label { display:block; font-size:13px; font-weight:600; margin-bottom:8px; }
+input,select { width:100%; min-height:44px; border:1px solid #bfc8da; border-radius:6px; background:white; color:var(--ink); padding:10px 12px; }
+input::placeholder { color:#788295; opacity:1; }
+#subscription-name { margin-bottom:20px; }
+.form-row { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:12px; }
+.money-input { position:relative; }
+.money-input>span { position:absolute; left:12px; top:12px; color:var(--slate); }
+.money-input input { padding-left:28px; }
+.field-help { color:var(--slate); font-size:12px; line-height:1.5; margin:8px 0 20px; }
+.form-error { color:#a52b38; font-size:13px; line-height:1.5; margin:0 0 14px; }
+.primary-button { width:100%; min-height:46px; border:0; background:var(--blue); color:white; font-weight:600; border-radius:7px; padding:12px; }
+.primary-button:hover { background:#264ba9; }
+.add-panel>.privacy-note { font-size:12px; margin-top:17px; text-align:center; }
+.empty-state { border:1px dashed #bcc8df; border-radius:9px; padding:32px 24px; text-align:center; }
+.empty-state h3 { font-size:20px; }
+.empty-state p { font-size:14px; color:var(--slate); line-height:1.6; margin:10px 0 15px; }
+footer { display:flex; justify-content:space-between; align-items:center; margin-top:45px; padding:23px 0 30px; border-top:1px solid var(--line); color:var(--slate); font-size:12px; }
+footer span { font-weight:650; }
+.skip-link { position:absolute; top:-60px; left:20px; padding:12px; background:white; z-index:5; }
+.skip-link:focus { top:12px; }
+[hidden] { display:none!important; }
+@media (max-width:800px) { .workspace { grid-template-columns:1fr; gap:28px; } .add-panel { max-width:none; } .overview { gap:20px; } h1 { font-size:34px; } .household-total strong { font-size:36px; } }
+@media (max-width:520px) { .site-header,main,footer { width:calc(100% - 32px); } .site-header { padding-block:20px; } .device-note { max-width:110px; text-align:right; line-height:1.5; } .overview { align-items:flex-start; flex-direction:column; padding-top:28px; gap:24px; } h1 { font-size:33px; } .household-total { align-items:flex-start; } .household-total strong { font-size:39px; } .shares-section { padding:21px 18px; } .section-intro { gap:8px; } .member-shares { gap:18px; } .member-shares li { min-width:120px; } .subscription-row { flex-wrap:wrap; padding:15px; gap:10px; } .subscription-symbol { width:34px; height:34px; font-size:16px; } .subscription-info { flex-basis:calc(100% - 44px); } .subscription-price { text-align:left; margin-left:44px; flex:1; } .delete-button { padding:12px 8px; } .add-panel { padding:22px 18px; } footer { gap:16px; } }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; } }
