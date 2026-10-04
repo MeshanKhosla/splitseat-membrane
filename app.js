@@ -6,23 +6,96 @@ const money = cents => new Intl.NumberFormat("en-US", { style: "currency", curre
 let subscriptions = [];
 let storage;
 let persistenceBlocked = false;
+let pendingOperations = [];
+let operationQueue = Promise.resolve();
+let formBusy = false;
+const STORAGE_KEY = "splitseat:v1";
+
+function withStorageLock(action) {
+  return globalThis.navigator?.locks?.request
+    ? navigator.locks.request("splitseat:v1:edit", action)
+    : Promise.resolve().then(action);
+}
+
+function enqueue(action) {
+  const result = operationQueue.then(action);
+  operationQueue = result.catch(() => {});
+  return result;
+}
+
+function applyOperations(base, operations) {
+  let result = [...base];
+  for (const operation of operations) {
+    if (operation.type === "delete") result = result.filter(entry => entry.id !== operation.id);
+    else {
+      const existing = result.find(entry => entry.id === operation.entry.id);
+      if (existing && JSON.stringify(existing) !== JSON.stringify(operation.entry)) {
+        throw new Error("A subscription id conflicts with saved data. Your session changes have not been saved.");
+      }
+      if (!existing) result.push(operation.entry);
+    }
+  }
+  return result;
+}
 
 function notice(message) {
   $("storage-notice").textContent = message;
   $("storage-notice").hidden = !message;
 }
 
-function persist() {
-  if (persistenceBlocked) return false;
+function blockPersistence() {
+  persistenceBlocked = true;
+  notice("Your saved budget could not be loaded. It has been left untouched. Changes on this page cannot persist and will be lost when you reload. Check your browser's storage settings or recover the saved data before reloading.");
+}
+
+function savePending() {
   try {
     saveSubscriptions(storage, subscriptions);
+    pendingOperations = [];
     notice("");
     return true;
   } catch {
-    notice("Changes cannot be saved in this browser right now. You can keep using this page, but changes will be lost when you reload. Check your browser's storage settings or available space.");
+    notice("Changes cannot be saved in this browser right now. Your session edits are kept on this page, but will be lost when you reload. Check your browser's storage settings or available space.");
     return false;
   }
 }
+
+function mutate(operation) {
+  return enqueue(() => withStorageLock(() => {
+    if (!persistenceBlocked) {
+      try {
+        const latest = loadSubscriptions(storage) ?? [];
+        subscriptions = applyOperations(latest, pendingOperations);
+      } catch {
+        blockPersistence();
+      }
+    }
+    // Replay unsaved intents on the latest data, never save a stale snapshot.
+    // Failed reads block writes and preserve the session's current entries.
+    subscriptions = applyOperations(subscriptions, [operation]);
+    pendingOperations.push(operation);
+    const saved = !persistenceBlocked && savePending();
+    render();
+    return saved;
+  }));
+}
+
+window.addEventListener("storage", event => {
+  if (event.storageArea !== storage || (event.key !== STORAGE_KEY && event.key !== null)) return;
+  enqueue(() => {
+    if (persistenceBlocked) return;
+    try {
+      const latest = loadSubscriptions(storage) ?? [];
+      subscriptions = applyOperations(latest, pendingOperations);
+      render();
+      $("activity").textContent = pendingOperations.length
+        ? "Saved changes from another tab loaded. Your unsaved session edits are still kept here."
+        : "Budget updated from another tab.";
+    } catch {
+      blockPersistence();
+    }
+  });
+});
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -63,11 +136,9 @@ function render() {
     const remove = node("button", "delete-button", "Delete");
     remove.type = "button";
     remove.setAttribute("aria-label", `Delete ${entry.name}`);
-    remove.addEventListener("click", () => {
+    remove.addEventListener("click", async () => {
       const index = subscriptions.findIndex(item => item.id === entry.id);
-      subscriptions = subscriptions.filter(item => item.id !== entry.id);
-      const saved = persist();
-      render();
+      const saved = await mutate({ type: "delete", id: entry.id });
       $("activity").textContent = `${entry.name} deleted.${saved ? " Saved in this browser." : " Changed for this session only."}`;
       const buttons = $("subscription-list").querySelectorAll("button");
       if (buttons.length) buttons[Math.min(index, buttons.length - 1)].focus();
@@ -95,8 +166,10 @@ function newId() {
   return id;
 }
 
-$("subscription-form").addEventListener("submit", event => {
+$("subscription-form").addEventListener("submit", async event => {
   event.preventDefault();
+  if (formBusy) return;
+  formBusy = true;
   $("form-error").hidden = true;
   try {
     const entry = validateSubscription({
@@ -106,18 +179,19 @@ $("subscription-form").addEventListener("submit", event => {
       interval: $("subscription-interval").value,
       members: $("subscription-members").value.split(","),
     });
-    subscriptions = [...subscriptions, entry];
-    const saved = persist();
-    render();
+    const saved = await mutate({ type: "add", entry });
     $("subscription-form").reset();
     $("activity").textContent = `${entry.name} added.${saved ? " Saved in this browser." : " Changed for this session only."}`;
     $("subscription-name").focus();
   } catch (error) {
     $("form-error").textContent = error instanceof Error ? error.message : "Check the subscription details and try again.";
     $("form-error").hidden = false;
+  } finally {
+    formBusy = false;
   }
 });
 
+await enqueue(() => withStorageLock(() => {
 try {
   storage = window.localStorage;
   const loaded = loadSubscriptions(storage);
@@ -127,11 +201,12 @@ try {
       { id: "example-music", name: "Family music", costCents: 1699, interval: "monthly", members: ["Alex", "Sam"] },
       { id: "example-cloud", name: "Shared cloud storage", costCents: 2999, interval: "yearly", members: ["Alex", "Sam", "Jordan"] },
     ];
-    persist();
+    pendingOperations = subscriptions.map(entry => ({ type: "add", entry }));
+    savePending();
     $("activity").textContent = "A few examples to start. Delete them and add your household's subscriptions.";
   } else subscriptions = loaded;
 } catch {
-  persistenceBlocked = true;
-  notice("Your saved budget could not be loaded. It has been left untouched. Changes on this page cannot persist and will be lost when you reload. Check your browser's storage settings or recover the saved data before reloading.");
+  blockPersistence();
 }
 render();
+}));
